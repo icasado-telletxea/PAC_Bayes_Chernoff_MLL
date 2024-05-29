@@ -16,7 +16,6 @@ latex_format()
 
 # Create custom loss functions
 criterion = nn.CrossEntropyLoss() # supervised classification loss
-criterion_nonreduced = nn.CrossEntropyLoss(reduce=False) # supervised classification loss
 
 # Hyper-Parameters
 RANDOM_SEED = 2147483647
@@ -63,7 +62,6 @@ train_dataset = torch.utils.data.Subset(train_dataset,
 
 # Initialize channels for models
 ks = np.arange(0.2, 5, step = 0.1)
-ks = ks[-3:]
 
 # Initialice models
 models = [createmodel(k, RANDOM_SEED, 10, 3).to(device) for k in ks]

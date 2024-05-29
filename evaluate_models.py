@@ -15,7 +15,6 @@ latex_format()
 
 # Create custom loss functions
 criterion = nn.CrossEntropyLoss() # supervised classification loss
-criterion_nonreduced = nn.CrossEntropyLoss(reduce=False) # supervised classification loss
 
 # Hyper-Parameters
 RANDOM_SEED = 2147483647
