@@ -281,6 +281,50 @@ def eval(device, model, loader, criterion):
 
     return correct, total, losses / total
 
+def eval_laplace(device, laplace, loader, eps=1e-7):
+    """ Evaluate the model on the loader using the criterion.
+    
+    Arguments
+    ---------
+    device : torch.device
+        The device to evaluate on
+    model : torch.nn.Module
+        The model to evaluate
+    loader : torch.utils.data.DataLoader
+        The data loader to evaluate on
+    """
+    
+    # Initialize counters
+    total = 0
+    bayes_loss = 0
+    gibbs_loss = 0
+    
+    # Iterate over the loader
+    with torch.no_grad():
+        for data, targets in loader:
+            
+            # Move data to device
+            total += targets.size(0)
+            data = data.to(device)
+            targets = targets.to(device)
+            
+            # To avoid softmax computation
+            laplace.likelihood = "regression"
+            
+            # (n_samples, batch_size, output_shape) Samples are logits
+            logits_samples = laplace.predictive_samples(data, pred_type = "glm", n_samples = 512)
+            # Get probabilities of true classes
+            oh_targets = F.one_hot(targets, num_classes=10)
+            
+            log_prob = torch.sum(logits_samples * oh_targets, -1) \
+                - torch.logsumexp(logits_samples, -1)
+            
+            
+            bayes_loss -= torch.logsumexp(log_prob - torch.log(torch.tensor(512, device=device)), 0).sum()
+            gibbs_loss -= log_prob.mean(0).sum()
+            
+
+    return bayes_loss/total, gibbs_loss/total
 
 def get_log_p(device, model, loader):
     cce = nn.CrossEntropyLoss(reduction="none")  # supervised classification loss
