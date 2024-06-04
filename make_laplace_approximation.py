@@ -8,6 +8,7 @@ import pickle
 import matplotlib.pyplot as plt
 import pandas as pd
 from laplace import Laplace
+from tqdm import tqdm
 
 from utils import latex_format, eval
 
@@ -77,21 +78,25 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
 labels = np.loadtxt("models/model_labels.txt", delimiter=" ", dtype = str)
 n_params = np.loadtxt("models/n_params.txt")
 
-subset = "last_layer"
+subset = "all"
 hessian = "kron"
 
 models = []
-for i in range(len(labels)):
 
-  with open(f"models/{labels[i]}.pickle", "rb") as handle:
-    model = pickle.load(handle)
+with tqdm(total=len(labels)) as pbar:
+  for i in range(len(labels)):
+    pbar.set_description(f"Processing {labels[i]}")
 
-    la = Laplace(model, "classification",
-                 subset_of_weights=subset,
-                 hessian_structure=hessian)
-    la.fit(train_loader)
-    la.optimize_prior_precision()
-    torch.save(la.state_dict(), f'laplace_models/{labels[i]}_{subset}_{hessian}_state_dict.pt')
+    with open(f"models/{labels[i]}.pickle", "rb") as handle:
+      model = pickle.load(handle)
+
+      la = Laplace(model, "classification",
+                  subset_of_weights=subset,
+                  hessian_structure=hessian)
+      la.fit(train_loader)
+      la.optimize_prior_precision()
+      torch.save(la.state_dict(), f'laplace_models/{labels[i]}_{subset}_{hessian}_state_dict.pt')
+    pbar.update(1)
 
 
 

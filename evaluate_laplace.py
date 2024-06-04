@@ -24,8 +24,8 @@ LEARNING_RATE = 0.01
 SUBSET_SIZE = 50000
 TEST_SUBSET_SIZE = 10000
 N_ITERS = 2000000
-BATCH_SIZE = 200
-BATCH_SIZE_TEST = 1000
+BATCH_SIZE = 32
+BATCH_SIZE_TEST = 32
 IMG_SIZE = 32
 N_CLASSES = 10
 WEIGHT_DECAY = 0.01
@@ -79,13 +79,15 @@ labels = np.loadtxt("models/model_labels.txt", delimiter=" ", dtype = str)
 n_params = np.loadtxt("models/n_params.txt")
 
 log_marginal = []
+Gibbs_losses_train = []
+Bayes_losses_train = []
 Gibbs_losses = []
 Bayes_losses = []
 prior_precisions = []
-subset = "last_layer"
+subset = "all"
 hessian = "kron"
-with tqdm(range(len(labels))) as t:
-  for i in range(len(labels)):
+with tqdm(range(len(n_params))) as t:
+  for i in range(len(n_params)):
 
     with open(f"models/{labels[i]}.pickle", "rb") as handle:
       model = pickle.load(handle)
@@ -94,20 +96,28 @@ with tqdm(range(len(labels))) as t:
                   hessian_structure=hessian)
       la.load_state_dict(torch.load(f'laplace_models/{labels[i]}_{subset}_{hessian}_state_dict.pt'))
 
-      log_marginal.append(la.log_marginal_likelihood(la.prior_precision).detach().cpu().numpy()) 
+      log_marginal.append(-la.log_marginal_likelihood(la.prior_precision).detach().cpu().numpy()/SUBSET_SIZE) 
+      
       bayes_loss, gibbs_loss = eval_laplace(device, la, test_loader)
       Bayes_losses.append(bayes_loss.detach().cpu().numpy())
       Gibbs_losses.append(gibbs_loss.detach().cpu().numpy())
+      
+      bayes_loss, gibbs_loss = eval_laplace(device, la, train_loader)
+      Bayes_losses_train.append(bayes_loss.detach().cpu().numpy())
+      Gibbs_losses_train.append(gibbs_loss.detach().cpu().numpy())
       prior_precisions.append(la.prior_precision.detach().cpu().numpy().item())
       t.set_description(f"Model {labels[i]}")
       t.update(1)
 
-map_results = pd.read_csv("results/train_results.csv")
 results = pd.DataFrame({'model': labels, 'parameters': n_params, 
                         'subset': subset, 'hessian': hessian, 
                         "prior precision": prior_precisions, 
-                       "Bayes loss": Bayes_losses, 
-                       "Gibbs loss": Gibbs_losses, 
-                       "log marginal": log_marginal})
-results.to_csv("results/laplace_results.csv", index=False)
+                       "bayes loss": Bayes_losses, 
+                       "gibbs loss": Gibbs_losses, 
+                       "bayes loss train": Bayes_losses_train,
+                       "gibbs loss train": Gibbs_losses_train,
+                       "neg log marginal": log_marginal,
+                       "normalized KL": np.array(log_marginal) - np.array(Gibbs_losses_train)})
+results.to_csv(f"results/laplace_{subset}_{hessian}_results.csv", index=False)
 print(results)
+

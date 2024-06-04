@@ -133,7 +133,7 @@ plt.annotate(r"\textbf{Test loss}",xy = (n_params[max_test]+500000, 2.1), xytext
 
 plt.axvspan(n_params[min_region], n_params[max_region], alpha=0.1, color='red')
 plt.vlines(n_params[max_test], ymin = -0.2, ymax =4, color = "black")
-plt.ylim(-0.2, 4)
+plt.ylim(-0.2, 3.9)
 plt.ylabel("Train/Test loss")
 plt.xlabel("Parameters")
 plt.savefig("results/double_descent.pdf", format = "pdf",bbox_inches='tight')
