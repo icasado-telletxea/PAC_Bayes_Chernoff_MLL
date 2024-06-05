@@ -328,7 +328,6 @@ def eval_laplace(device, laplace, loader, eps=1e-7):
 
 def get_log_p(device, model, loader):
     cce = nn.CrossEntropyLoss(reduction="none")  # supervised classification loss
-    model.eval()
     aux = []
     with torch.no_grad():
         for data, targets in loader:
@@ -340,7 +339,7 @@ def get_log_p(device, model, loader):
     return torch.cat(aux)
 
 #Binary Search for lambdas
-def rate_function_BS(model, s_value, device, data_loader):
+def rate_function(log_p, s_value, device):
   if (s_value<0):
     min_lamb=torch.tensor(-10000).to(device)
     max_lamb=torch.tensor(0).to(device)
@@ -349,16 +348,45 @@ def rate_function_BS(model, s_value, device, data_loader):
     max_lamb=torch.tensor(10000).to(device)
 
   s_value=torch.tensor(s_value).to(device)
-  log_p = get_log_p(device, model, data_loader)
   return aux_rate_function_TernarySearch(log_p, s_value, min_lamb, max_lamb, 0.001)
 
-def eval_log_p(log_p, lamb, s_value, device):
+#Binary Search for lambdas
+def rate_function_inv(log_p, s_value, device):
+  min_lamb=torch.tensor(0).to(device)
+  max_lamb=torch.tensor(100000).to(device)
+
+  s_value=torch.tensor(s_value).to(device)
+  inv, _, _ = aux_inv_rate_function_TernarySearch(log_p, s_value, min_lamb, max_lamb, 0.01, device)
+  
+  return inv
+
+
+def aux_inv_rate_function_TernarySearch(log_p, s_value, low, high, epsilon, device):
+
+    while (high - low) > epsilon:
+        mid1 = low + (high - low) / 3
+        mid2 = high - (high - low) / 3
+        if eval_inverse_rate_at_lambda(log_p, mid1, s_value, device) < eval_inverse_rate_at_lambda(log_p, mid2, s_value, device):
+            high = mid2
+        else:
+            low = mid1
+    # Return the midpoint of the final range
+    mid = (low + high) / 2
+    inv = eval_inverse_rate_at_lambda(log_p, mid, s_value, device)
+    return [
+        inv.detach().cpu().numpy(),
+        mid.detach().cpu().numpy(),
+        (inv*mid - s_value).detach().cpu().numpy(),
+    ]
+
+def eval_inverse_rate_at_lambda(log_p, lamb, s_value, device):
     jensen_val = (
-        torch.logsumexp(lamb * log_p, 0)
-        - torch.log(torch.tensor(log_p.shape[0], device=device))
-        - lamb * torch.mean(log_p)
-    )
-    return lamb * s_value - jensen_val
+        torch.logsumexp(lamb * log_p, -1)
+        - torch.log(torch.tensor(log_p.shape[-1], device=device))
+    ).mean(0)
+    aux_tensor = torch.tensor(10/0.05, device=device)
+    jensen_val = torch.log(torch.exp(jensen_val) + torch.sqrt(0.5*torch.log(aux_tensor)/torch.tensor(log_p.shape[-1], device=device)))
+    return (s_value + jensen_val)/lamb - torch.mean(log_p)
 
 
 def aux_rate_function_TernarySearch(log_p, s_value, low, high, epsilon):
@@ -381,18 +409,19 @@ def aux_rate_function_TernarySearch(log_p, s_value, low, high, epsilon):
     ]
 
 
-def eval_cummulant(model, lambdas, data_loader, device):
-    log_p = get_log_p(device, model, data_loader)
+def eval_cummulant(log_p, lambdas, device):
+    # log_p shape (samples, n_data)
+    
     return np.array(
         [
             (
-                torch.logsumexp(lamb * log_p, 0)
-                - torch.log(torch.tensor(log_p.shape[0], device=device))
-                - torch.mean(lamb * log_p)
+                torch.logsumexp(lamb * log_p, -1)
+                - torch.log(torch.tensor(log_p.shape[-1], device=device))
+                - torch.mean(lamb * log_p, -1)
             )
             .detach()
             .cpu()
-            .numpy()
+            .numpy().mean(0)
             for lamb in lambdas
         ]
     )
