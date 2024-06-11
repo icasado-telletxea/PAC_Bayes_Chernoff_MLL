@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser()
 
 #-db DATABASE -u USERNAME -p PASSWORD -size 20
 parser.add_argument("-p", "--precision", help="Prior precision. If optimized, then -p=0")
+parser.add_argument("-m", "--modelspath", help="Models folder name")
 
 args = parser.parse_args()
 
@@ -104,7 +105,7 @@ with tqdm(range(len(n_params))) as t:
       la = Laplace(model, "classification",
                   subset_of_weights=subset,
                   hessian_structure=hessian)
-      la.load_state_dict(torch.load(f'laplace_models/{labels[i]}_{subset}_{hessian}_state_dict.pt'))
+      la.load_state_dict(torch.load(f'{args.modelspath}/{labels[i]}_{subset}_{hessian}_state_dict.pt'))
 
       if float(args.precision) > 0:
           la.prior_precision = float(args.precision)
