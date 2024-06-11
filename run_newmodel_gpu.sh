@@ -14,8 +14,8 @@ nvidia-smi
 
 
 BASEFOLDER=/home/cs.aau.dk/zp25hk/PAC_Bayes_Chernoff_MLL
-PYTHON="singularity exec --nv $BASEFOLDER/containers/firstim python"
-SCRIPT=$BASEFOLDER/train_models.py
+PYTHON="singularity exec --nv $BASEFOLDER/containers/pytorch-3.10 python3"
+SCRIPT=$BASEFOLDER/evaluate_laplace.py
 
 $PYTHON $SCRIPT
 
