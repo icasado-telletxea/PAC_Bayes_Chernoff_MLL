@@ -12,6 +12,16 @@ from tqdm import tqdm
 
 from utils import latex_format, eval, eval_laplace
 
+import argparse
+parser = argparse.ArgumentParser()
+
+#-db DATABASE -u USERNAME -p PASSWORD -size 20
+parser.add_argument("-p", "--precision", help="Prior precision. If optimized, then -p=0")
+
+args = parser.parse_args()
+
+
+
 # Activate Latex format for matplotlib
 latex_format()
 
@@ -96,7 +106,12 @@ with tqdm(range(len(n_params))) as t:
                   hessian_structure=hessian)
       la.load_state_dict(torch.load(f'laplace_models/{labels[i]}_{subset}_{hessian}_state_dict.pt'))
 
-      log_marginal.append(-la.log_marginal_likelihood(la.prior_precision).detach().cpu().numpy()/SUBSET_SIZE) 
+      if float(args.precision) > 0:
+          la.prior_precision = float(args.precision)
+          print(f"Precision: {la.prior_precision}")
+
+      log_marginal.append(-la.log_marginal_likelihood(la.prior_precision).detach().cpu().numpy()/SUBSET_SIZE)
+
       
       bayes_loss, gibbs_loss = eval_laplace(device, la, test_loader)
       Bayes_losses.append(bayes_loss.detach().cpu().numpy())
@@ -118,6 +133,6 @@ results = pd.DataFrame({'model': labels, 'parameters': n_params,
                        "gibbs loss train": Gibbs_losses_train,
                        "neg log marginal": log_marginal,
                        "normalized KL": np.array(log_marginal) - np.array(Gibbs_losses_train)})
-results.to_csv(f"results/laplace_{subset}_{hessian}_results.csv", index=False)
+results.to_csv(f"results/laplace_{subset}_{hessian}_{la.prior_precision}_results.csv", index=False)
 print(results)
 
