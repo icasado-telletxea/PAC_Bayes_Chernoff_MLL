@@ -78,7 +78,7 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
 labels = np.loadtxt("models/model_labels.txt", delimiter=" ", dtype = str)
 n_params = np.loadtxt("models/n_params.txt")
 
-subset = "all"
+subset = "last_layer"
 hessian = "kron"
 
 models = []
