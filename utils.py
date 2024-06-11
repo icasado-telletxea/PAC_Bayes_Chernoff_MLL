@@ -109,9 +109,9 @@ class LeNet5(nn.Module):
             nn.ReLU(),
         )
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=int(120 * k), out_features=84),
+            nn.Linear(in_features=int(120 * k), out_features=int(84 * k)),
             nn.ReLU(),
-            nn.Linear(in_features=84, out_features=n_classes),
+            nn.Linear(in_features=int(84 * k), out_features=n_classes),
         )
 
     def forward(self, x):
@@ -338,17 +338,17 @@ def get_log_p(device, model, loader):
             aux.append(log_p)
     return torch.cat(aux)
 
-#Binary Search for lambdas
-def rate_function(log_p, s_value, device):
-  if (s_value<0):
-    min_lamb=torch.tensor(-10000).to(device)
-    max_lamb=torch.tensor(0).to(device)
-  else:
-    min_lamb=torch.tensor(0).to(device)
-    max_lamb=torch.tensor(10000).to(device)
+# #Binary Search for lambdas
+# def rate_function(log_p, s_value, device):
+#   if (s_value<0):
+#     min_lamb=torch.tensor(-10000).to(device)
+#     max_lamb=torch.tensor(0).to(device)
+#   else:
+#     min_lamb=torch.tensor(0).to(device)
+#     max_lamb=torch.tensor(10000).to(device)
 
-  s_value=torch.tensor(s_value).to(device)
-  return aux_rate_function_TernarySearch(log_p, s_value, min_lamb, max_lamb, 0.001)
+#   s_value=torch.tensor(s_value).to(device)
+#   return aux_rate_function_TernarySearch(log_p, s_value, min_lamb, max_lamb, 0.001)
 
 #Binary Search for lambdas
 def rate_function_inv(log_p, s_value, device):
@@ -389,24 +389,24 @@ def eval_inverse_rate_at_lambda(log_p, lamb, s_value, device):
     return (s_value + jensen_val)/lamb - torch.mean(log_p)
 
 
-def aux_rate_function_TernarySearch(log_p, s_value, low, high, epsilon):
+# def aux_rate_function_TernarySearch(log_p, s_value, low, high, epsilon):
 
-    while (high - low) > epsilon:
-        mid1 = low + (high - low) / 3
-        mid2 = high - (high - low) / 3
+#     while (high - low) > epsilon:
+#         mid1 = low + (high - low) / 3
+#         mid2 = high - (high - low) / 3
 
-        if eval_log_p(log_p, mid1, s_value) < eval_log_p(log_p, mid2, s_value):
-            low = mid1
-        else:
-            high = mid2
+#         if eval_log_p(log_p, mid1, s_value) < eval_log_p(log_p, mid2, s_value):
+#             low = mid1
+#         else:
+#             high = mid2
 
-    # Return the midpoint of the final range
-    mid = (low + high) / 2
-    return [
-        eval_log_p(log_p, mid, s_value).detach().cpu().numpy(),
-        mid.detach().cpu().numpy(),
-        (mid * s_value - eval_log_p(log_p, mid, s_value)).detach().cpu().numpy(),
-    ]
+#     # Return the midpoint of the final range
+#     mid = (low + high) / 2
+#     return [
+#         eval_log_p(log_p, mid, s_value).detach().cpu().numpy(),
+#         mid.detach().cpu().numpy(),
+#         (mid * s_value - eval_log_p(log_p, mid, s_value)).detach().cpu().numpy(),
+#     ]
 
 
 def eval_cummulant(log_p, lambdas, device):
