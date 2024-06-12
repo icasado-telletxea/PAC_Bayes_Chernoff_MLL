@@ -26,6 +26,13 @@ IMG_SIZE = 32
 N_CLASSES = 10
 WEIGHT_DECAY = 0.01
 
+import argparse
+parser = argparse.ArgumentParser()
+
+#-db DATABASE -u USERNAME -p PASSWORD -size 20
+parser.add_argument("-csv", help="csv file path", type=str)
+
+args = parser.parse_args()
 
 # setup devices
 torch.manual_seed(RANDOM_SEED)
@@ -74,7 +81,7 @@ subset = "last_layer"
 hessian = "kron"
 delta = 0.05
 n_samples = 5
-results_laplace = pd.read_csv(f"results/laplace_{subset}_{hessian}_opt.csv")
+results_laplace = pd.read_csv(args.csv)
 inverse_rates = []
 s_values = []
 variances = []
@@ -114,7 +121,6 @@ with tqdm(range(len(n_params))) as t:
       Iinv = rate_function_inv(log_p, s_value, device).item()
       inverse_rates.append(Iinv)
       variances.append(variance)
-      print(variances)
 
       t.update(1)
 
@@ -122,5 +128,5 @@ results_laplace["inverse rate"] = inverse_rates
 results_laplace["s value"] = s_values
 results_laplace["variance"] = variances
 
-results_laplace.to_csv(f"results/laplace_{subset}_{hessian}_opt.csv", index=False)
+results_laplace.to_csv(args.csv, index=False)
 print(results_laplace)

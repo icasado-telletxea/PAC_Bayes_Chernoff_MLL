@@ -10,13 +10,13 @@ import pandas as pd
 from laplace import Laplace
 from tqdm import tqdm
 
-from utils import latex_format, eval, eval_laplace
+from utils import latex_format, eval, eval_laplace, compute_trace
 
 import argparse
 parser = argparse.ArgumentParser()
 
 #-db DATABASE -u USERNAME -p PASSWORD -size 20
-parser.add_argument("-p", "--precision", help="Prior precision. If optimized, then -p=0")
+parser.add_argument("-p", "--precision", help="Prior precision. If optimized, then -p=0", type=float)
 parser.add_argument("-m", "--modelspath", help="Models folder name")
 
 args = parser.parse_args()
@@ -94,6 +94,8 @@ Gibbs_losses_train = []
 Bayes_losses_train = []
 Gibbs_losses = []
 Bayes_losses = []
+KLs = []
+last_layer_params = []
 prior_precisions = []
 subset = "last_layer"
 hessian = "kron"
@@ -109,11 +111,22 @@ with tqdm(range(len(n_params))) as t:
 
       if float(args.precision) > 0:
           la.prior_precision = float(args.precision)
-          print(f"Precision: {la.prior_precision}")
+          prior = str(args.precision)
+      else:
+          prior = "opt"
+          
 
       log_marginal.append(-la.log_marginal_likelihood(la.prior_precision).detach().cpu().numpy()/SUBSET_SIZE)
-
       
+      trace_term, last_layer_param = compute_trace(la.posterior_precision)
+      
+
+      trace_term = la.prior_precision * trace_term
+      kl = 0.5 * ( trace_term - last_layer_param + la.posterior_precision.logdet() - la.log_det_prior_precision + la.scatter)    
+      print(kl)
+      
+      last_layer_params.append(last_layer_param)
+      KLs.append(kl.detach().cpu().numpy().item()/SUBSET_SIZE)
       bayes_loss, gibbs_loss = eval_laplace(device, la, test_loader)
       Bayes_losses.append(bayes_loss.detach().cpu().numpy())
       Gibbs_losses.append(gibbs_loss.detach().cpu().numpy())
@@ -132,8 +145,10 @@ results = pd.DataFrame({'model': labels, 'parameters': n_params,
                        "gibbs loss": Gibbs_losses, 
                        "bayes loss train": Bayes_losses_train,
                        "gibbs loss train": Gibbs_losses_train,
-                       "neg log marginal": log_marginal,
-                       "normalized KL": np.array(log_marginal) - np.array(Gibbs_losses_train)})
-results.to_csv(f"results/laplace_{subset}_{hessian}_{la.prior_precision}_results.csv", index=False)
+                       "neg log marginal laplace": log_marginal,
+                       "neg log marginal": np.array(Gibbs_losses_train) + np.array(KLs),
+                       "normalized KL": KLs,
+                       "last layer params": last_layer_params})
+results.to_csv(f"results/laplace_{subset}_{hessian}_"+prior+"_results.csv", index=False)
 print(results)
 

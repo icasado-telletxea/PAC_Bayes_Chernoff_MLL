@@ -4,6 +4,7 @@ import torch
 import torch.optim as optim
 import numpy as np
 from tqdm import tqdm
+from laplace.utils import kron
 
 
 import matplotlib.pyplot as plt
@@ -388,6 +389,35 @@ def eval_inverse_rate_at_lambda(log_p, lamb, s_value, device):
     jensen_val = torch.log(torch.exp(jensen_val) + torch.sqrt(0.5*torch.log(aux_tensor)/torch.tensor(log_p.shape[-1], device=device)))
     return (s_value + jensen_val)/lamb - torch.mean(log_p)
 
+def compute_trace(krondecomposed):
+    blocks = []
+    for Qs, ls, delta in zip(krondecomposed.eigenvectors, krondecomposed.eigenvalues, krondecomposed.deltas):
+        if len(ls) == 1:
+            Q, l = Qs[0], ls[0]
+            blocks.append(Q @ torch.diag(torch.pow(l + delta, -1)) @ Q.T)
+        else:
+            Q1, Q2 = Qs
+            l1, l2 = ls
+            Q = kron(Q1, Q2)
+            if krondecomposed.damping:
+                delta_sqrt = torch.sqrt(delta)
+                l = torch.pow(
+                    torch.outer(l1 + delta_sqrt, l2 + delta_sqrt), -1
+                )
+            else:
+                l = torch.pow(torch.outer(l1, l2) + delta, -1)
+            L = torch.diag(l.flatten())
+            blocks.append(Q @ L @ Q.T)
+        
+    covariances = [torch.linalg.inv(block + 1e-3 * torch.eye(block.shape[0]).to(block.device)) for block in blocks]
+    
+    trace_term = 0
+    n_params = 0
+    for block in covariances:
+        trace_term += torch.trace(block)
+        n_params += block.shape[0]
+        
+    return trace_term, n_params
 
 # def aux_rate_function_TernarySearch(log_p, s_value, low, high, epsilon):
 
