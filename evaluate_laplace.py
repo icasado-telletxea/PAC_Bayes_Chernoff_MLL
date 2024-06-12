@@ -95,7 +95,7 @@ Bayes_losses_train = []
 Gibbs_losses = []
 Bayes_losses = []
 prior_precisions = []
-subset = "all"
+subset = "last_layer"
 hessian = "kron"
 with tqdm(range(len(n_params))) as t:
   for i in range(len(n_params)):
