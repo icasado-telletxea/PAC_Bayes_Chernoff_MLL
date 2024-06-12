@@ -74,9 +74,10 @@ subset = "last_layer"
 hessian = "kron"
 delta = 0.05
 n_samples = 5
-results_laplace = pd.read_csv(f"results/laplace_{subset}_{hessian}_results.csv")
+results_laplace = pd.read_csv(f"results/laplace_{subset}_{hessian}_opt.csv")
 inverse_rates = []
 s_values = []
+variances = []
 g_cpu = torch.Generator(device=device)
 g_cpu.manual_seed(RANDOM_SEED)
 
@@ -105,17 +106,21 @@ with tqdm(range(len(n_params))) as t:
       log_p = torch.stack(log_p)
       # load csv with pandas
       
+      variance = log_p.var(dim=-1).mean().detach().cpu().numpy().item()
       s_value = results_laplace.query(f"model=='{labels[i]}'")["normalized KL"].item() * SUBSET_SIZE 
       s_value = (s_value + np.log(SUBSET_SIZE/delta)) / (SUBSET_SIZE - 1)
       s_values.append(s_value)
       # get item
       Iinv = rate_function_inv(log_p, s_value, device).item()
       inverse_rates.append(Iinv)
+      variances.append(variance)
+      print(variances)
 
       t.update(1)
 
 results_laplace["inverse rate"] = inverse_rates
 results_laplace["s value"] = s_values
+results_laplace["variance"] = variances
 
-results_laplace.to_csv(f"results/laplace_{subset}_{hessian}_results.csv", index=False)
+results_laplace.to_csv(f"results/laplace_{subset}_{hessian}_opt.csv", index=False)
 print(results_laplace)
