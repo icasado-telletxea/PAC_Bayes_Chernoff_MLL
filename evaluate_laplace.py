@@ -123,7 +123,6 @@ with tqdm(range(len(n_params))) as t:
 
       trace_term = la.prior_precision * trace_term
       kl = 0.5 * ( trace_term - last_layer_param + la.posterior_precision.logdet() - la.log_det_prior_precision + la.scatter)    
-      print(kl)
       
       last_layer_params.append(last_layer_param)
       KLs.append(kl.detach().cpu().numpy().item()/SUBSET_SIZE)

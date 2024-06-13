@@ -30,7 +30,9 @@ import argparse
 parser = argparse.ArgumentParser()
 
 #-db DATABASE -u USERNAME -p PASSWORD -size 20
-parser.add_argument("-csv", help="csv file path", type=str)
+parser.add_argument("--hessian", help="csv file path", type=str)
+parser.add_argument("--subset", help="csv file path", type=str)
+parser.add_argument("--p", help="csv file path", type=float)
 
 args = parser.parse_args()
 
@@ -67,7 +69,9 @@ test_dataset = torch.utils.data.Subset(test_dataset, list(range(0, TEST_SUBSET_S
 test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                           batch_size=BATCH_SIZE_TEST,
                           shuffle=False)
-
+train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                          batch_size=BATCH_SIZE_TEST,
+                          shuffle=False)
 
 #######################################################################
 ############################# TRAIN MODELS ############################
@@ -80,8 +84,8 @@ n_params = np.loadtxt("models/n_params.txt")
 subset = "last_layer"
 hessian = "kron"
 delta = 0.05
-n_samples = 5
-results_laplace = pd.read_csv(args.csv)
+csv_path = f"results/laplace_{args.subset}_{args.hessian}_{args.p}_results.csv"
+results_laplace = pd.read_csv(csv_path)
 inverse_rates = []
 s_values = []
 variances = []
@@ -98,20 +102,10 @@ with tqdm(range(len(n_params))) as t:
                         subset_of_weights=subset,
                         hessian_structure=hessian)
       la.load_state_dict(torch.load(f'laplace_models/{labels[i]}_{subset}_{hessian}_state_dict.pt'))
+      la.prior_precision = args.p
 
-      # Shape (samples, n_params)
-      log_p = []
-      for j in range(n_samples):
-        # Do it like this to only have a single model in memory each time
-        sample = la.sample(1, generator = g_cpu)[0]
-        if subset == "last_layer":
-          vector_to_parameters(sample, la.model.last_layer.parameters())
-        else:
-          vector_to_parameters(sample, la.params)
-        # Shape (samples, n_data)
-        log_p.append(get_log_p(device, la, test_loader))
-      log_p = torch.stack(log_p)
-      # load csv with pandas
+
+      log_p = get_log_p(device, la, test_loader)
       
       variance = log_p.var(dim=-1).mean().detach().cpu().numpy().item()
       s_value = results_laplace.query(f"model=='{labels[i]}'")["normalized KL"].item() * SUBSET_SIZE 
@@ -119,6 +113,7 @@ with tqdm(range(len(n_params))) as t:
       s_values.append(s_value)
       # get item
       Iinv = rate_function_inv(log_p, s_value, device).item()
+
       inverse_rates.append(Iinv)
       variances.append(variance)
 
@@ -128,5 +123,5 @@ results_laplace["inverse rate"] = inverse_rates
 results_laplace["s value"] = s_values
 results_laplace["variance"] = variances
 
-results_laplace.to_csv(args.csv, index=False)
+results_laplace.to_csv(csv_path, index=False)
 print(results_laplace)

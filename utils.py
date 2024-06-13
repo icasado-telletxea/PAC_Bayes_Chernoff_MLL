@@ -339,6 +339,47 @@ def get_log_p(device, model, loader):
             aux.append(log_p)
     return torch.cat(aux)
 
+
+def get_log_p(device, laplace, loader, eps=1e-7):
+    """ Evaluate the model on the loader using the criterion.
+    
+    Arguments
+    ---------
+    device : torch.device
+        The device to evaluate on
+    model : torch.nn.Module
+        The model to evaluate
+    loader : torch.utils.data.DataLoader
+        The data loader to evaluate on
+    """
+    
+    # Initialize counters
+    total = 0
+    log_p = []
+    
+    # Iterate over the loader
+    with torch.no_grad():
+        for data, targets in loader:
+            
+            # Move data to device
+            total += targets.size(0)
+            data = data.to(device)
+            targets = targets.to(device)
+            
+            # To avoid softmax computation
+            laplace.likelihood = "regression"
+            
+            # (n_samples, batch_size, output_shape) Samples are logits
+            logits_samples = laplace.predictive_samples(data, pred_type = "glm", n_samples = 512)
+            # Get probabilities of true classes
+            oh_targets = F.one_hot(targets, num_classes=10)
+            
+            log_prob = torch.sum(logits_samples * oh_targets, -1) \
+                - torch.logsumexp(logits_samples, -1)
+            
+            log_p.append(log_prob)
+
+    return torch.cat(log_p, 1)
 # #Binary Search for lambdas
 # def rate_function(log_p, s_value, device):
 #   if (s_value<0):
@@ -374,6 +415,7 @@ def aux_inv_rate_function_TernarySearch(log_p, s_value, low, high, epsilon, devi
     # Return the midpoint of the final range
     mid = (low + high) / 2
     inv = eval_inverse_rate_at_lambda(log_p, mid, s_value, device)
+    print(mid, inv)
     return [
         inv.detach().cpu().numpy(),
         mid.detach().cpu().numpy(),
@@ -385,8 +427,9 @@ def eval_inverse_rate_at_lambda(log_p, lamb, s_value, device):
         torch.logsumexp(lamb * log_p, -1)
         - torch.log(torch.tensor(log_p.shape[-1], device=device))
     ).mean(0)
-    aux_tensor = torch.tensor(10/0.05, device=device)
-    jensen_val = torch.log(torch.exp(jensen_val) + torch.sqrt(0.5*torch.log(aux_tensor)/torch.tensor(log_p.shape[-1], device=device)))
+
+    # aux_tensor = torch.log(torch.tensor(10/0.05, device=device))
+    # jensen_val = torch.log(torch.exp(jensen_val) + torch.sqrt(0.5*aux_tensor/torch.tensor(log_p.shape[-1], device=device))).mean(0)
     return (s_value + jensen_val)/lamb - torch.mean(log_p)
 
 def compute_trace(krondecomposed):
