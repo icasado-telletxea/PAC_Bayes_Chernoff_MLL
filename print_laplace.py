@@ -14,7 +14,7 @@ n_params = np.loadtxt("models/n_params.txt")
 
 subset = "last_layer"
 hessian = "kron"
-p = 100.0
+p = "opt"
 
 # Read the csv
 results = pd.read_csv(f"results/laplace_{subset}_{hessian}_{p}_results.csv")

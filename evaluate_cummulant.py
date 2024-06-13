@@ -36,6 +36,8 @@ parser.add_argument("--p", help="csv file path", type=float)
 
 args = parser.parse_args()
 
+if args.p == 0:
+  args.p = "opt"
 # setup devices
 torch.manual_seed(RANDOM_SEED)
 if torch.cuda.is_available():
@@ -102,7 +104,8 @@ with tqdm(range(len(n_params))) as t:
                         subset_of_weights=subset,
                         hessian_structure=hessian)
       la.load_state_dict(torch.load(f'laplace_models/{labels[i]}_{subset}_{hessian}_state_dict.pt'))
-      la.prior_precision = args.p
+      if args.p != "opt":
+        la.prior_precision = args.p
 
 
       log_p = get_log_p(device, la, test_loader)
