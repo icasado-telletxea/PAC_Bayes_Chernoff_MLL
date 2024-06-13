@@ -14,7 +14,7 @@ n_params = np.loadtxt("models/n_params.txt")
 
 subset = "last_layer"
 hessian = "kron"
-p = "opt"
+p = 100.0
 
 # Read the csv
 results = pd.read_csv(f"results/laplace_{subset}_{hessian}_{p}_results.csv")
@@ -72,8 +72,8 @@ plt.scatter(n_params, Gibbs_losses_train, marker = "o", label = "Train loss", co
 plt.scatter(n_params, Bayes_losses, marker = "o", label = "Bayes loss", color = jet(2), s = 100)
 plt.scatter(n_params, Gibbs_losses, marker = "o", label = "Gibbs loss", color = jet(3), s = 100)
 plt.scatter(n_params, Bound, marker = "o", label = "Bound", color = jet(4), s = 100)
-plt.scatter(n_params, log_marginal, marker = "o", label = "Log Marginal Laplace", color = jet(5), s = 100)
-plt.scatter(n_params, elbo, marker = "o", label = "Log Marginal Upper Bound", color = jet(6), s = 100)
+plt.scatter(n_params, log_marginal, marker = "o", label = "Neg Log Marginal Laplace", color = jet(5), s = 100)
+plt.scatter(n_params, elbo, marker = "o", label = "Neg Log Marginal Upper Bound", color = jet(6), s = 100)
 
 max_test = np.argmax(bayes_loss_)
 mask = np.isclose(bayes_loss_, bayes_loss_[max_test], 0.05)
