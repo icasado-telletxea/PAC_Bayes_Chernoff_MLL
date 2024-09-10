@@ -85,9 +85,9 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
 #######################################################################
 
 
-
-labels = np.loadtxt("models/model_labels.txt", delimiter=" ", dtype = str)
-n_params = np.loadtxt("models/n_params.txt")
+model_type = "ConvCNN"
+labels = np.loadtxt(f"models/{model_type}_model_labels.txt", delimiter=" ", dtype = str)
+n_params = np.loadtxt(f"models/{model_type}_n_params.txt")
 
 log_marginal = []
 Gibbs_losses_train = []
@@ -148,6 +148,6 @@ results = pd.DataFrame({'model': labels, 'parameters': n_params,
                        "neg log marginal": np.array(Gibbs_losses_train) + np.array(KLs),
                        "normalized KL": KLs,
                        "last layer params": last_layer_params})
-results.to_csv(f"results/laplace_{subset}_{hessian}_"+prior+"_results.csv", index=False)
+results.to_csv(f"results/laplace_{model_type}_{subset}_{hessian}_"+prior+"_results.csv", index=False)
 print(results)
 

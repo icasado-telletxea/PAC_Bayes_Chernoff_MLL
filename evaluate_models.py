@@ -72,9 +72,9 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
 #######################################################################
 
 
-
-labels = np.loadtxt("models/model_labels.txt", delimiter=" ", dtype = str)
-n_params = np.loadtxt("models/n_params.txt")
+model_type = "ConvCNN"
+labels = np.loadtxt(f"models/{model_type}_model_labels.txt", delimiter=" ", dtype = str)
+n_params = np.loadtxt(f"models/{model_type}_n_params.txt")
 
 models = []
 for i in range(len(labels)):
@@ -91,7 +91,7 @@ for i in range(len(models)):
 
 results = pd.DataFrame({'model': labels, 'parameters': n_params, 
                         'train loss': train_loss, 'test loss': test_loss})
-results.to_csv("results/train_results.csv", index=False)
+results.to_csv(f"results/{model_type}_train_results.csv", index=False)
 
 
 # Window size for smoothing
