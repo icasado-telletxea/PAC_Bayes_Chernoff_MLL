@@ -75,8 +75,9 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
 
 
 
-labels = np.loadtxt("models/model_labels.txt", delimiter=" ", dtype = str)
-n_params = np.loadtxt("models/n_params.txt")
+model_type = "ConvCNN"
+labels = np.loadtxt(f"models/{model_type}_model_labels.txt", delimiter=" ", dtype = str)
+n_params = np.loadtxt(f"models/{model_type}_n_params.txt")
 
 subset = "last_layer"
 hessian = "kron"
